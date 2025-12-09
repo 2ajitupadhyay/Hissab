@@ -44,7 +44,14 @@ import com.ajidroid.hissab.R
 import com.ajidroid.hissab.data.Member
 import com.ajidroid.hissab.data.membersList
 import com.ajidroid.hissab.ui.HissabTopAppBar
+import com.ajidroid.hissab.ui.navigation.NavigationDestination
 import com.ajidroid.hissab.ui.viewModelProvider
+
+
+object HomeDestination : NavigationDestination{
+    override val route = "home"
+    override val titleRes = R.string.app_name
+}
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,14 +69,14 @@ fun HomeScreen(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             HissabTopAppBar(
-                title = "Home Screen",//stringResource(HomeDestination.titleRes),
+                title = stringResource(HomeDestination.titleRes),
                 canNavigateBack = false,
                 scrollBehavior = scrollBehavior
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = navigateToMemberEntry,
+                onClick = {},//navigateToMemberEntry,
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier
                     .padding(
@@ -86,7 +93,7 @@ fun HomeScreen(
     ) { innerPadding ->
         HomeBody(
             memberList = homeUiState.memberList,
-            onItemClick = navigateToMemberUpdate,
+            onItemClick = {},//navigateToMemberUpdate,
             modifier = modifier.fillMaxSize(),
             contentPadding = innerPadding,
         )
@@ -116,7 +123,7 @@ private fun HomeBody(
             PersonGrid(
                 membersList = memberList,
 //                onItemClick = { onItemClick(it.id) },
-//                contentPadding = contentPadding,
+                contentPadding = contentPadding,
                 modifier = Modifier.padding(horizontal = 8.dp) // need to edit later
             )
         }
@@ -124,10 +131,13 @@ private fun HomeBody(
 }
 
 @Composable
-private fun PersonGrid(membersList : List<Member>, modifier: Modifier){
+private fun PersonGrid(
+    membersList : List<Member>,
+    contentPadding: PaddingValues,
+    modifier: Modifier){
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-//        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -172,5 +182,5 @@ fun PersonPreview(){
 @Composable
 @Preview
 fun PersonGridPreview(){
-    PersonGrid(membersList, modifier = Modifier)
+    PersonGrid(membersList, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), modifier = Modifier)
 }

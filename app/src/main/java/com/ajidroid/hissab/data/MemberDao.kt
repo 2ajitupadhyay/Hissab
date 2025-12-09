@@ -1,29 +1,35 @@
 package com.ajidroid.hissab.data
 
-import android.content.ClipData.Item
 import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MemberDao {
-
-    @Query("SELECT * from members")
-    fun getAllMembers() : Flow<List<Member>>
-
-    @Query("SELECT * from members WHERE id = :id")
-    fun getMember(id : Int) : Flow<Member>
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertMember(member : Member)
-
-    @Update
-    suspend fun insertTransaction(member: Member)
-
-    @Delete
-    suspend fun delete(member : Member)
+    @Query("SELECT * FROM members")
+    fun getAllMembers(): Flow<List<Member>>
+//
+    @Query("SELECT * FROM members WHERE id = :id")
+    fun getMember(id: Int): Flow<Member>
+//
+//    // Update operations
+//    @Update
+//    suspend fun updateMember(member: Member)  // Renamed from insertTransaction to updateMember
+//
+//    @Update
+//    suspend fun updateTransaction(transaction: Transaction)  // Added for transaction updates
+//
+//    // Delete operations
+//    @Delete
+//    suspend fun deleteMember(member: Member)
+//
+//    @Delete
+//    suspend fun deleteTransaction(transaction: Transaction)  // Added for transaction deletion
+//
+//    // Additional useful queries
+//    @Query("SELECT * FROM transactions WHERE memberId = :memberId")
+//    fun getTransactionsForMember(memberId: Int): Flow<List<Transaction>>
+//
+//    @Query("DELETE FROM transactions WHERE memberId = :memberId")
+//    suspend fun deleteTransactionsForMember(memberId: Int)
 }
