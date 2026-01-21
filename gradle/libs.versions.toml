@@ -8,13 +8,13 @@ junitVersion = "1.10.1"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.9.2"
 activityCompose = "1.10.1"
+material3 = "1.2.1"
+compose = "1.6.0"
 composeBom = "2025.07.00"
 room = "2.7.2"
 lifecycle = "2.9.2"
 navigation-compose = "2.9.3"
-jetbrains-annotations = "26.0.2"
-#ksp = "2.0.0-1.0.21"    # Add KSP version matching your Kotlin version
-ksp = "1.9.0-1.0.13"
+ksp = "2.0.0-1.0.22" # Add KSP version matching your Kotlin version
 
 
 [libraries]
@@ -24,7 +24,7 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
-androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "junitVersion" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
@@ -34,7 +34,6 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 
-jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation-compose" }
 
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
@@ -57,8 +56,3 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }  # Add KSP plugin
 # This bundle ensures JetBrains annotations is always included
 room = ["room-runtime", "room-ktx"]
 viewmodel = ["lifecycle-viewmodel", "lifecycle-viewmodel-ktx"]
-
-
-#[replacements]
-## Replace old IntelliJ annotations with JetBrains annotations automatically
-#"com.intellij:annotations" = "org.jetbrains:annotations"

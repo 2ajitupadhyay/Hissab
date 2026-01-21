@@ -29,7 +29,7 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideMemberDao(
+    fun provideMemberDao( // Why we need module for dao but not for the repository, how dao is different
         db: HissabDatabase
     ): MemberDao = db.memberDao()
 }

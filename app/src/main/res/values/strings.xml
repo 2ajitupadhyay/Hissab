@@ -1,5 +1,20 @@
 <resources>
-    <string name="app_name">Hissab1</string>
+    <string name="app_name">Hissab</string>
     <string name="back_button">back_Button</string>
     <string name="item_entry_title">Member_Entry_Title</string>
+    <string name="no_members_found">No Members Found.\nPlease add members</string>
+    <string name="action">split among members</string>
+    <string name="borrow">Borrow</string>
+    <string name="lend">Lend</string>
+    <string name="to_take">To Take</string>
+    <string name="to_give">To Give</string>
+    <string name="add_member">Add Member</string>
+    <string name="rename_member">Rename Member</string>
+    <string name="rename">Rename</string>
+    <string name="clear_tab">Clear Tab</string>
+    <string name="delete">Delete</string>
+    <string name="no_transactions_yet">No transactions yet</string>
+    <string name="add_transaction">Add Transaction</string>
+    <string name="add">Add</string>
+    <string name="cancel">Cancel</string>
 </resources>

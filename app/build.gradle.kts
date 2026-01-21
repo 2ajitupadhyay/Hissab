@@ -2,8 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp) // Add KSP plugin for Room
-//    id("com.google.devtools.ksp")
+    id("com.google.devtools.ksp") version "2.0.0-1.0.22"
+//    alias(libs.plugins.ksp) // Add KSP plugin for Room
     id("com.google.dagger.hilt.android")
 }
 
@@ -14,7 +14,7 @@ android {
     defaultConfig {
         applicationId = "com.ajidroid.hissab"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -31,8 +31,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
         jvmTarget = "11"
@@ -42,18 +42,7 @@ android {
     }
 }
 
-configurations.all {
-    resolutionStrategy {
-        force(libs.jetbrains.annotations.get().toString())
-    }
-}
-
 dependencies {
-    implementation(libs.jetbrains.annotations) {
-        exclude(group = "com.intellij", module = "annotations")
-    }
-
-    implementation(libs.navigation.compose)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -62,7 +51,7 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
+//    implementation(libs.androidx.material3)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -71,15 +60,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-//    implementation("androidx.navigation:navigation-compose:2.7.5")
-
-//    implementation(libs.androidx.room.runtime)
-//    implementation(libs.androidx.room.compiler)
-//    implementation(libs.androidx.room.ktx)
-//
-//    implementation(libs.androidx.lifecycle.viewmodel.compose)
-
     implementation(libs.bundles.room)
+    implementation(libs.navigation.compose)
     ksp(libs.room.compiler) // Needed for @Entity, @Dao, @Database processing
 
     // ViewModel
@@ -89,4 +71,5 @@ dependencies {
     ksp("com.google.dagger:hilt-android-compiler:2.57.1")
 
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("androidx.compose.material3:material3:1.2.1")
 }

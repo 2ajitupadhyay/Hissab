@@ -1,16 +1,75 @@
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package com.ajidroid.hissab.ui.member
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ajidroid.hissab.data.Member
-import com.ajidroid.hissab.data.MembersRepository
+import com.ajidroid.hissab.data.MemberRepository
+import com.ajidroid.hissab.data.Transactions
+import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-//
+
+data class MemberDetailUiState(
+    val isLoading: Boolean = true,
+    val memberName: String = "",
+    val transactions: List<Transactions> = emptyList(),
+    val isEmpty: Boolean = false,
+    val error: String? = null
+)
+
+@HiltViewModel
+class MemberDetailViewModel @Inject constructor(
+    private val repository: MemberRepository
+) : ViewModel() {
+
+    private val _memberId = MutableStateFlow<Int?>(null)
+
+    val uiState: StateFlow<MemberDetailUiState> =
+        _memberId
+            .filterNotNull()
+            .flatMapLatest { memberId ->
+                repository.getMemberTransactions(memberId) // member + transactions
+            }
+            .map { result ->
+                when {
+                    result == null -> {
+                        MemberDetailUiState(
+                            isLoading = false,
+                            isEmpty = true
+                        )
+                    }
+
+                    else -> {
+                        MemberDetailUiState(
+                            isLoading = false,
+                            memberName = result.member.memberName,
+                            transactions = result.transactions,
+                            isEmpty = result.transactions.isEmpty()
+                        )
+                    }
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = MemberDetailUiState(isLoading = true)
+            )
+
+    fun loadMember(memberId: Int) {
+        if (_memberId.value != memberId) {
+            _memberId.value = memberId
+        }
+    }
+}
+
 //class MemberDetailViewModel(
 //    savedStateHandle: SavedStateHandle,
 //    private val membersRepository: MembersRepository
