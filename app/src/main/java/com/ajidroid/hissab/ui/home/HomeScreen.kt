@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.ajidroid.hissab.ui.home
 
 import androidx.compose.animation.animateColorAsState
@@ -24,9 +26,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -39,12 +43,13 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -90,40 +95,20 @@ fun HomeScreen(
     viewModel: HomeScreenViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior() // Change Scroll behaviour, it should stick to the screen
+
     var showAddMemberDialog by remember { mutableStateOf(false) }
-    var showTransactionDialog by remember { mutableStateOf(false) }
     var showRenameMemberDialog by remember { mutableStateOf(false) }
+
+    var showTransactionDialog by remember { mutableStateOf(false) }
     var selectedMemberIdAddTransaction by remember { mutableStateOf<Int?>(null) }
-    var showActionSheet by remember { mutableStateOf(false) }
+
+    var showMoreActionSheet by remember { mutableStateOf(false) }
     var selectedMemberMoreAction by remember { mutableStateOf<Member?>(null) }
 
-
-    if (showActionSheet && selectedMemberMoreAction != null) {
-        MemberActionSheet(
-            memberName = selectedMemberMoreAction!!.memberName,
-            onDismiss = { showActionSheet = false }
-        ) { action ->
-            showActionSheet = false // remove this from here and make it only for the specific feature like delete and clearTab
-            when (action) {
-                MemberAction.Rename -> showRenameMemberDialog = true
-                MemberAction.ClearTab -> {}
-                MemberAction.Delete -> viewModel.deleteMember(selectedMemberMoreAction!!)
-            }
-        }
-    }
-
-    if (showRenameMemberDialog && selectedMemberMoreAction != null) {
-        AddMemberDialog(
-            titleText = stringResource(R.string.rename_member),
-            onDismiss = { showRenameMemberDialog = false } ,
-            onConfirm = { name ->
-                viewModel.renameMemberName(name, selectedMemberMoreAction!!.id)
-                showRenameMemberDialog = false
-            }
-        )
-    }
-
+    var showSplitSheet by remember { mutableStateOf(false) }
+    var splitStep by remember { mutableStateOf(SplitStep.SELECT_MEMBERS) }
+    var selectedMemberIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -131,7 +116,8 @@ fun HomeScreen(
             HissabTopAppBar(
                 title = stringResource(R.string.app_name),
                 showActionIcon = true,
-                onActionClick = {},
+                actionIcon = Icons.Default.Add,
+                onActionClick = {showSplitSheet = true},
                 scrollBehavior = scrollBehavior
             )
         },
@@ -165,7 +151,7 @@ fun HomeScreen(
             },
             onMoreClick = {
                 selectedMemberMoreAction = it
-                showActionSheet = true
+                showMoreActionSheet = true
                           },
             modifier = Modifier
                 .fillMaxSize()
@@ -175,10 +161,23 @@ fun HomeScreen(
         if (showAddMemberDialog) {
             AddMemberDialog(
                 titleText = stringResource(R.string.add_member),
+                textInitial = "",
                 onDismiss = { showAddMemberDialog = false },
                 onConfirm = { name ->
                     viewModel.addMember(name)
                     showAddMemberDialog = false
+                }
+            )
+        }
+
+        if (showRenameMemberDialog && selectedMemberMoreAction != null) {
+            AddMemberDialog(
+                titleText = stringResource(R.string.rename_member),
+                onDismiss = { showRenameMemberDialog = false } ,
+                textInitial = selectedMemberMoreAction!!.memberName,
+                onConfirm = { name ->
+                    viewModel.renameMemberName(name, selectedMemberMoreAction!!.id)
+                    showRenameMemberDialog = false
                 }
             )
         }
@@ -201,6 +200,52 @@ fun HomeScreen(
                 }
             )
         }
+
+        if (showMoreActionSheet && selectedMemberMoreAction != null) {
+            MemberActionSheet(
+                memberName = selectedMemberMoreAction!!.memberName,
+                onDismiss = { showMoreActionSheet = false }
+            ) { action ->
+                showMoreActionSheet = false // remove this from here and make it only for the specific feature like delete and clearTab
+                when (action) {
+                    MemberAction.Rename -> showRenameMemberDialog = true
+                    MemberAction.ClearTab -> {}
+                    MemberAction.Delete -> viewModel.deleteMember(selectedMemberMoreAction!!)
+                }
+            }
+        } // For clear tab add a new transaction with reversing the total
+        // amount of borrow or lend; also give a confirmation dialog with explanation before calling the method
+
+        if (showSplitSheet) {
+            SplitWiseBottomSheet(
+                step = splitStep,
+                members = uiState.members,
+                selectedMemberIds = selectedMemberIds,
+                onMembersSelected = { selectedMemberIds = it },
+                onCancel = {
+                    when (splitStep) {
+                        SplitStep.SELECT_MEMBERS -> showSplitSheet = false
+                        SplitStep.ENTER_AMOUNT -> splitStep = SplitStep.SELECT_MEMBERS
+                    }
+                },
+                onDismiss = {
+                    splitStep = SplitStep.SELECT_MEMBERS
+                    showSplitSheet = false
+                            },
+                onNext = {
+                    splitStep = SplitStep.ENTER_AMOUNT
+                },
+                onSplitDone = { amount, description ->
+                    viewModel.splitWise(
+                        selectedMemberIds = selectedMemberIds.toList(),
+                        amount = amount,
+                        description = "Split: $description"
+                    )
+                    splitStep = SplitStep.SELECT_MEMBERS
+                    showSplitSheet = false
+                }
+            )
+        } // FIX-> When the no of member are larger the done and cancel button inside the sheet is not visible
     }
 }
 // Done <--Use Dynamic color scheme for android 12 and above.
@@ -249,30 +294,6 @@ private fun HomeScreenContent(
                 modifier = modifier
             )
         }
-    }
-}
-
-@Composable
-private fun HomeEmpty(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = stringResource(R.string.no_members_found),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun HomeLoading(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator()
     }
 }
 
@@ -433,10 +454,11 @@ fun MemberGridItem(
 @Composable
 fun AddMemberDialog(
     titleText: String,
+    textInitial: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(textInitial) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -456,7 +478,7 @@ fun AddMemberDialog(
                 onClick = { onConfirm(name) },
                 enabled = name.isNotBlank()
             ) {
-                Text("Add")
+                Text(stringResource(R.string.add))
             }
         },
         dismissButton = {
@@ -582,28 +604,65 @@ fun GiveTakeToggle(
                 .height(48.dp)
                 .clip(MaterialTheme.shapes.small)
                 .background(backgroundColor)
-                .clickable { onToggle(!isGive) }
                 .padding(4.dp)
         ) {
+
             BoxWithConstraints {
                 val halfWidth = this.maxWidth / 2
 
+                // 🔹 Sliding white background
                 Box(
                     modifier = Modifier
                         .offset(x = halfWidth * slideFraction)
                         .width(halfWidth)
                         .fillMaxHeight()
                         .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.surface),
-                    contentAlignment = Alignment.Center
+                        .background(MaterialTheme.colorScheme.surface)
+                )
+
+                // 🔹 Fixed labels (always visible)
+                Row(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        text = if (isGive) stringResource(R.string.borrow) else stringResource(R.string.lend),
-                        style = MaterialTheme.typography.labelLarge
+                    ToggleText(
+                        text = stringResource(R.string.borrow),
+                        selected = isGive,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onToggle(true) }
+                    )
+
+                    ToggleText(
+                        text = stringResource(R.string.lend),
+                        selected = !isGive,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onToggle(false) }
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ToggleText(
+    text: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.fillMaxHeight(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected)
+                MaterialTheme.colorScheme.onSurface
+            else
+                MaterialTheme.colorScheme.onPrimaryContainer
+        )
     }
 }
 
@@ -627,7 +686,7 @@ private fun MemberActionSheet(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
             )
 
-            Divider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             ActionRow(
                 icon = Icons.Default.Edit,
@@ -645,7 +704,7 @@ private fun MemberActionSheet(
                 onActionSelected(MemberAction.ClearTab)
             }
 
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier.padding(vertical = 8.dp),
                 color = MaterialTheme.colorScheme.outlineVariant
             )
@@ -659,6 +718,201 @@ private fun MemberActionSheet(
             }
         }
     }
+}
+
+@Composable
+fun SplitWiseBottomSheet(
+    step: SplitStep,
+    members: List<Member>,
+    selectedMemberIds: Set<Int>,
+    onMembersSelected: (Set<Int>) -> Unit,
+    onCancel: () -> Unit,
+    onDismiss: () -> Unit,
+    onNext: () -> Unit,
+    onSplitDone: (Double, String?) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss
+    ) {
+        when (step) {
+            SplitStep.SELECT_MEMBERS -> {
+                SplitMemberSelectionContent(
+                    members = members,
+                    selectedMemberIds = selectedMemberIds,
+                    onMembersSelected = onMembersSelected,
+                    onCancel = onCancel,
+                    onDone = onNext
+                )
+            }
+
+            SplitStep.ENTER_AMOUNT -> {
+                SplitAmountContent(
+                    onCancel = onCancel,
+                    onDone = onSplitDone
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SplitMemberSelectionContent(
+    members: List<Member>,
+    selectedMemberIds: Set<Int>,
+    onMembersSelected: (Set<Int>) -> Unit,
+    onCancel: () -> Unit,
+    onDone: () -> Unit
+) {
+    val allSelected = selectedMemberIds.size == members.size
+
+    Column(Modifier.padding(16.dp)) {
+
+        Text("Split with", style = MaterialTheme.typography.titleMedium)
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    onMembersSelected(
+                        if (allSelected) emptySet()
+                        else members.map { it.id }.toSet()
+                    )
+                },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = allSelected,
+                onCheckedChange = {
+                    onMembersSelected(
+                        if (it) members.map { m -> m.id }.toSet()
+                        else emptySet()
+                    )
+                }
+            )
+            Text("Select All")
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        LazyColumn {
+            items(members) { member ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val newSet = selectedMemberIds.toMutableSet()
+                            if (newSet.contains(member.id)) newSet.remove(member.id)
+                            else newSet.add(member.id)
+                            onMembersSelected(newSet)
+                        }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = selectedMemberIds.contains(member.id),
+                        onCheckedChange = {
+                            val newSet = selectedMemberIds.toMutableSet()
+                            if (it) newSet.add(member.id)
+                            else newSet.remove(member.id)
+                            onMembersSelected(newSet)
+                        }
+                    )
+                    Text(member.memberName, Modifier.padding(start = 8.dp))
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        ActionButtons(
+            onCancel = onCancel,
+            onDone = onDone,
+            doneEnabled = selectedMemberIds.isNotEmpty()
+        )
+    }
+}
+
+@Composable
+private fun SplitAmountContent(
+    onCancel: () -> Unit,
+    onDone: (Double, String?) -> Unit,
+) {
+    var amount by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+
+    Column(Modifier.padding(16.dp)) {
+
+        Text(
+            text = "Enter amount",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = amount,
+            onValueChange = { amount = it },
+            label = { Text("Total Amount") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = description,
+            onValueChange = { description = it },
+            label = { Text("Description (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            maxLines = 3
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        ActionButtons(
+            onCancel = onCancel,
+            onDone = {
+                // Description can be passed later when you extend ViewModel
+                onDone(
+                    amount.toDoubleOrNull() ?: 0.0,
+                    description
+                )
+            },
+            doneEnabled = amount.toDoubleOrNull()?.let { it > 0 } == true
+        )
+    }
+}
+
+@Composable
+private fun ActionButtons(
+    onCancel: () -> Unit,
+    onDone: () -> Unit,
+    doneEnabled: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+    ) {
+        TextButton(onClick = onCancel) {
+            Text("Cancel")
+        }
+        Spacer(Modifier.width(8.dp))
+        Button(
+            onClick = onDone,
+            enabled = doneEnabled
+        ) {
+            Text("Done")
+        }
+    }
+}
+
+enum class SplitStep {
+    SELECT_MEMBERS,
+    ENTER_AMOUNT
 }
 
 @Composable

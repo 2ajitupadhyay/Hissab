@@ -17,6 +17,43 @@ interface MemberDao {
     suspend fun insertTransaction(transaction: Transactions) // No two dao methods should be called together from a repository they should
     // They should be done only via dao interface with @Transaction annotation to ensure atomicity
 
+    @Insert
+    suspend fun insertBulkTransactions(
+        transactions: List<Transactions>
+    )
+
+    @Query("""
+    UPDATE members
+    SET totalAmount = 
+        CASE 
+            WHEN :toGive = 1 THEN totalAmount - :amount
+            ELSE totalAmount + :amount
+        END
+    WHERE id = :memberId
+""")
+    suspend fun updateMemberAmount(
+        memberId: Int,
+        amount: Int,
+        toGive: Boolean
+    )
+
+    @Transaction
+    suspend fun splitWiseTransactions(
+        transactions: List<Transactions>
+    ) {
+        // 1️⃣ Insert a transaction for EACH selected member
+        insertBulkTransactions(transactions)
+
+        // 2️⃣ Update balance for EACH selected member
+        transactions.forEach { transaction ->
+            updateMemberAmount(
+                memberId = transaction.memberId,
+                amount = transaction.amount,
+                toGive = transaction.toGive
+            )
+        }
+    }
+
     // Reduce member amount
     @Query("""
         UPDATE members 

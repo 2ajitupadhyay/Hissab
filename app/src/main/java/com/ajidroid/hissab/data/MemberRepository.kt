@@ -14,6 +14,12 @@ class MemberRepository @Inject constructor(
         dao.insertMember(Member(memberName = name))
     }
 
+    suspend fun splitWise(
+        transactions: List<Transactions>
+    ) {
+        dao.splitWiseTransactions(transactions)
+    }
+
     // Insert transaction
     suspend fun addTransaction(
         memberId: Int,

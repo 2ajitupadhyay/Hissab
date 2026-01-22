@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ajidroid.hissab.data.Member
 import com.ajidroid.hissab.data.MemberRepository
+import com.ajidroid.hissab.data.Transactions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,6 +85,36 @@ class HomeScreenViewModel @Inject constructor(
                 toGive = toGive,
                 description = description
             )
+        }
+    }
+
+    fun splitWise(
+        selectedMemberIds: List<Int>,
+        amount: Double,
+        description: String?
+    ) {
+        if (selectedMemberIds.isEmpty() || amount <= 0) return
+
+        viewModelScope.launch {
+            val memberCount = selectedMemberIds.size
+            val totalAmount = amount.toInt()
+
+            val perMemberAmount = totalAmount / memberCount
+            val remainder = totalAmount % memberCount
+
+            val currentTime = System.currentTimeMillis()
+
+            val transactions = selectedMemberIds.mapIndexed { index, memberId ->
+                Transactions(
+                    memberId = memberId,
+                    amount = perMemberAmount + if (index == 0) remainder else 0,
+                    toGive = false, // members owe the user
+                    description = description, //Try later to make the  description start with the name of the selected members for the split
+                    time = currentTime
+                )
+            }
+
+            repository.splitWise(transactions)
         }
     }
 }
