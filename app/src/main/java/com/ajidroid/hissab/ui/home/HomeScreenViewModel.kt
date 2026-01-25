@@ -1,6 +1,7 @@
 package com.ajidroid.hissab.ui.home
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ajidroid.hissab.data.Member
@@ -8,13 +9,16 @@ import com.ajidroid.hissab.data.MemberRepository
 import com.ajidroid.hissab.data.Transactions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @HiltViewModel
 class HomeScreenViewModel @Inject constructor(
@@ -23,6 +27,7 @@ class HomeScreenViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    val selectedMemberIds = mutableStateSetOf<Int>()
 
     init {
         getAllMembers()
@@ -88,33 +93,64 @@ class HomeScreenViewModel @Inject constructor(
         }
     }
 
+    fun toggleMember(id: Int) {
+        if (!selectedMemberIds.add(id)) {
+            selectedMemberIds.remove(id)
+        }
+    }
+
+    fun selectAll(ids: List<Int>) {
+        selectedMemberIds.clear()
+        selectedMemberIds.addAll(ids)
+    }
+
+    fun clearSelection() {
+        selectedMemberIds.clear()
+    }
+
+    private val _events = MutableSharedFlow<SplitEvent>()
+    val events = _events.asSharedFlow()
+
     fun splitWise(
-        selectedMemberIds: List<Int>,
         amount: Double,
         description: String?
     ) {
-        if (selectedMemberIds.isEmpty() || amount <= 0) return
+        // Take an immutable snapshot immediately
+        val memberIds = selectedMemberIds.toList()
+        if (memberIds.isEmpty() || amount <= 0) return
 
         viewModelScope.launch {
-            val memberCount = selectedMemberIds.size
-            val totalAmount = amount.toInt()
+            runCatching {
 
-            val perMemberAmount = totalAmount / memberCount
-            val remainder = totalAmount % memberCount
+                val totalAmount = amount.roundToInt()
+                val memberCount = memberIds.size
 
-            val currentTime = System.currentTimeMillis()
+                val baseAmount = totalAmount / memberCount
+                val remainder = totalAmount % memberCount
+                val timestamp = System.currentTimeMillis()
 
-            val transactions = selectedMemberIds.mapIndexed { index, memberId ->
-                Transactions(
-                    memberId = memberId,
-                    amount = perMemberAmount + if (index == 0) remainder else 0,
-                    toGive = false, // members owe the user
-                    description = description, //Try later to make the  description start with the name of the selected members for the split
-                    time = currentTime
-                )
+                val normalizedDescription =
+                    description?.takeIf { it.isNotBlank() }
+
+                val transactions = memberIds.mapIndexed { index, memberId ->
+                    Transactions(
+                        memberId = memberId,
+                        amount = baseAmount + if (index == 0) remainder else 0,
+                        toGive = false,
+                        description = normalizedDescription,//Try later to make the  description start with the name of the selected members for the split
+                        time = timestamp
+                    )
+                }
+
+                repository.splitWise(transactions)
             }
-
-            repository.splitWise(transactions)
+                .onSuccess {
+                    clearSelection()
+                    // emit success event if you want (recommended)
+                }
+                .onFailure { throwable ->
+                    // emit error event / log
+                }
         }
     }
 }
@@ -129,4 +165,9 @@ enum class MemberAction {
     Rename,
     ClearTab,
     Delete
+}
+
+sealed interface SplitEvent {
+    object Success : SplitEvent
+    data class Error(val message: String) : SplitEvent
 }

@@ -108,7 +108,23 @@ fun HomeScreen(
 
     var showSplitSheet by remember { mutableStateOf(false) }
     var splitStep by remember { mutableStateOf(SplitStep.SELECT_MEMBERS) }
+    val selectedIds = viewModel.selectedMemberIds
     var selectedMemberIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
+    // Make the split event wise success/failure toast
+//    LaunchedEffect(Unit) {
+//        viewModel.events.collect { event ->
+//            when (event) {
+//                SplitEvent.Success -> {
+//                    showSplitSheet = false
+//                    splitStep = SplitStep.SELECT_MEMBERS
+//                }
+//                is SplitEvent.Error -> {
+//                    // Show snackbar / toast
+//                }
+//            }
+//        }
+//    }
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -220,8 +236,10 @@ fun HomeScreen(
             SplitWiseBottomSheet(
                 step = splitStep,
                 members = uiState.members,
-                selectedMemberIds = selectedMemberIds,
-                onMembersSelected = { selectedMemberIds = it },
+                selectedMemberIds = selectedIds,
+                onToggleMember = viewModel::toggleMember,
+                onSelectAll = { viewModel.selectAll(uiState.members.map { it.id }) },
+                onClearSelection = viewModel::clearSelection,
                 onCancel = {
                     when (splitStep) {
                         SplitStep.SELECT_MEMBERS -> showSplitSheet = false
@@ -237,7 +255,7 @@ fun HomeScreen(
                 },
                 onSplitDone = { amount, description ->
                     viewModel.splitWise(
-                        selectedMemberIds = selectedMemberIds.toList(),
+//                        selectedMemberIds = selectedMemberIds.toList(),
                         amount = amount,
                         description = "Split: $description"
                     )
@@ -245,18 +263,21 @@ fun HomeScreen(
                     showSplitSheet = false
                 }
             )
-        } // FIX-> When the no of member are larger the done and cancel button inside the sheet is not visible
+        } // FIX-> The alignment of done and cancel button inside the sheet is not appropriate
     }
 }
 // Done <--Use Dynamic color scheme for android 12 and above.
 // The home screen top app bar should have, split wise icon.
 // Use Animation APIs for creating animation when navigating between one screen to another; mainly when the card is clicked.
-// Use better elevation for the cards
+// FIXED-> Use better elevation for the cards
 // Create necessary icons with vector: like split wise, maybe add transaction,
 // Also provide daily push notification of total to take or to give
 // Make it CI-CD integrated through github for updating and removing feature.
 // Mark last transaction as invalid but only for the last or for until 1 hour of registered; the transaction will be there with a darker
 // background and maybe a line over the whole transaction item, but its value will not be calculated into the result
+// FIX-> Give a confirmation dialog before deleting a member
+// FIX-> Add a Me (include) yourself box in split wise with already selected, and give space between selecte All and the rest of the member
+// Check if you play with the ModalBottomSheet elements like how much of the it should be visible at start for more info icon(i)
 
 @Composable
 private fun HomeScreenContent(
@@ -433,10 +454,8 @@ fun MemberGridItem(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                        shape = CircleShape
-                    )
+                    .clip(CircleShape)
+                    .background( color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f) )
                     .align(Alignment.TopEnd)
                     .clickable(onClick = onMoreClick),
                 contentAlignment = Alignment.Center
@@ -725,7 +744,9 @@ fun SplitWiseBottomSheet(
     step: SplitStep,
     members: List<Member>,
     selectedMemberIds: Set<Int>,
-    onMembersSelected: (Set<Int>) -> Unit,
+    onToggleMember: (Int) -> Unit,
+    onSelectAll: () -> Unit,
+    onClearSelection: () -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
     onNext: () -> Unit,
@@ -739,7 +760,9 @@ fun SplitWiseBottomSheet(
                 SplitMemberSelectionContent(
                     members = members,
                     selectedMemberIds = selectedMemberIds,
-                    onMembersSelected = onMembersSelected,
+                    onToggleMember = onToggleMember,
+                    onSelectAll = onSelectAll,
+                    onClearSelection = onClearSelection,
                     onCancel = onCancel,
                     onDone = onNext
                 )
@@ -759,78 +782,76 @@ fun SplitWiseBottomSheet(
 private fun SplitMemberSelectionContent(
     members: List<Member>,
     selectedMemberIds: Set<Int>,
-    onMembersSelected: (Set<Int>) -> Unit,
+    onToggleMember: (Int) -> Unit,
+    onSelectAll: () -> Unit,
+    onClearSelection: () -> Unit,
     onCancel: () -> Unit,
     onDone: () -> Unit
 ) {
     val allSelected = selectedMemberIds.size == members.size
 
-    Column(Modifier.padding(16.dp)) {
-
-        Text("Split with", style = MaterialTheme.typography.titleMedium)
-
-        Spacer(Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    onMembersSelected(
-                        if (allSelected) emptySet()
-                        else members.map { it.id }.toSet()
-                    )
-                },
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = allSelected,
-                onCheckedChange = {
-                    onMembersSelected(
-                        if (it) members.map { m -> m.id }.toSet()
-                        else emptySet()
-                    )
-                }
+    Scaffold(
+        bottomBar = {
+            ActionButtons(
+                onCancel = onCancel,
+                onDone = onDone,
+                doneEnabled = selectedMemberIds.isNotEmpty()
             )
-            Text("Select All")
         }
+    ) { paddingValues ->
 
-        Spacer(Modifier.height(8.dp))
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
 
-        LazyColumn {
-            items(members) { member ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            val newSet = selectedMemberIds.toMutableSet()
-                            if (newSet.contains(member.id)) newSet.remove(member.id)
-                            else newSet.add(member.id)
-                            onMembersSelected(newSet)
-                        }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = selectedMemberIds.contains(member.id),
-                        onCheckedChange = {
-                            val newSet = selectedMemberIds.toMutableSet()
-                            if (it) newSet.add(member.id)
-                            else newSet.remove(member.id)
-                            onMembersSelected(newSet)
-                        }
-                    )
-                    Text(member.memberName, Modifier.padding(start = 8.dp))
+            Text("Split with", style = MaterialTheme.typography.titleMedium)
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        if (allSelected) onClearSelection()
+                        else onSelectAll()
+                    },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = allSelected,
+                    onCheckedChange = {
+                        if (it) onSelectAll() else onClearSelection()
+                    }
+                )
+                Text("Select All")
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(members, key = { it.id }) { member ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggleMember(member.id) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = selectedMemberIds.contains(member.id),
+                            onCheckedChange = {// FIXED -> This is slow can we make it faster for better UX
+                                onToggleMember(member.id)
+                            }
+                        )
+                        Text(member.memberName, Modifier.padding(start = 8.dp))
+                    }
                 }
             }
         }
-
-        Spacer(Modifier.height(16.dp))
-
-        ActionButtons(
-            onCancel = onCancel,
-            onDone = onDone,
-            doneEnabled = selectedMemberIds.isNotEmpty()
-        )
     }
 }
 
