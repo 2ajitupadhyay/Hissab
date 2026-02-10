@@ -2,7 +2,7 @@ package com.ajidroid.hissab.data
 
 import kotlinx.coroutines.flow.Flow
 
-interface MemberRepository {
+interface MemberLocalDataSource {
 
     suspend fun addMember(name: String)
 

@@ -4,7 +4,7 @@ package com.ajidroid.hissab.ui.member
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ajidroid.hissab.data.MemberRepository
+import com.ajidroid.hissab.data.MemberLocalDataSourceImpl
 import com.ajidroid.hissab.data.Transactions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
@@ -27,7 +27,7 @@ data class MemberDetailUiState(
 
 @HiltViewModel
 class MemberDetailViewModel @Inject constructor(
-    private val repository: MemberRepository
+    private val repository: MemberLocalDataSourceImpl
 ) : ViewModel() {
 
     private val _memberId = MutableStateFlow<Int?>(null)
@@ -36,7 +36,7 @@ class MemberDetailViewModel @Inject constructor(
         _memberId
             .filterNotNull()
             .flatMapLatest { memberId ->
-                repository.getMemberTransactions(memberId) // member + transactions
+                repository.getMemberWithTransactions(memberId) // member + transactions
             }
             .map { result ->
                 when {
