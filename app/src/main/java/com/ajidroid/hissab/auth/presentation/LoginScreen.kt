@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,16 +16,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,6 +46,7 @@ import com.ajidroid.hissab.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -51,10 +62,12 @@ fun LoginRoute(
         onLoginClick = viewModel::login,
         onSignUpClick = viewModel::signUp,
         onGoogleSignIn = viewModel::signInWithGoogle,
-        onContinueAsGuestClick = viewModel::continueAsGuest
+        onContinueAsGuestClick = viewModel::continueAsGuest,
+        onForgotPasswordClick = viewModel::resetPassword
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     state: LoginUiState,
@@ -63,96 +76,167 @@ fun LoginScreen(
     onLoginClick: () -> Unit,
     onSignUpClick: () -> Unit,
     onGoogleSignIn: (String) -> Unit,
-    onContinueAsGuestClick: () -> Unit
+    onContinueAsGuestClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     val googleLauncher = rememberGoogleSignInLauncher(
         context = context,
         onTokenReceived = onGoogleSignIn
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.align(Alignment.Center)
+    var showResetSheet by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf(state.email) }
+
+    LaunchedEffect(state.message) {
+        state.message?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(24.dp)
         ) {
 
-            Text(
-                text = "Welcome to Hissab",
-                style = MaterialTheme.typography.headlineMedium
-            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.align(Alignment.Center)
+            ) {
 
-            OutlinedTextField(
-                value = state.email,
-                onValueChange = onEmailChange,
-                label = { Text("Email") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = state.password,
-                onValueChange = onPasswordChange,
-                label = { Text("Password") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            state.error?.let {
                 Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error
+                    text = "Welcome to Hissab",
+                    style = MaterialTheme.typography.headlineMedium
                 )
-            }
 
-            state.message?.let {
+                OutlinedTextField(
+                    value = state.email,
+                    onValueChange = {
+                        onEmailChange(it)
+                        resetEmail = it
+                    },
+                    label = { Text("Email") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = state.password,
+                    onValueChange = onPasswordChange,
+                    label = { Text("Password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // 🔥 Forgot Password Entry
                 Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.primary
+                    text = "Forgot password?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .clickable { showResetSheet = true }
                 )
+
+                Button(
+                    onClick = onLoginClick,
+                    enabled = !state.isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Sign In")
+                }
+
+                OutlinedButton(
+                    onClick = onSignUpClick,
+                    enabled = !state.isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Sign Up")
+                }
+
+                Divider()
+
+                OutlinedButton(
+                    onClick = { googleLauncher.launchGoogleSignIn() },
+                    enabled = !state.isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Continue with Google")
+                }
+
+                TextButton(onClick = onContinueAsGuestClick) {
+                    Text("Continue as Guest")
+                }
             }
 
-            Button(
-                onClick = onLoginClick,
-                enabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Sign In")
-            }
-
-            OutlinedButton(
-                onClick = onSignUpClick,
-                enabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Sign Up")
-            }
-
-            Divider()
-
-            OutlinedButton(
-                onClick = { googleLauncher.launchGoogleSignIn() },
-                enabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Continue with Google")
-            }
-
-            TextButton(onClick = onContinueAsGuestClick) {
-                Text("Continue as Guest")
+            if (state.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
         }
+    }
 
-        if (state.isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center)
-            )
+    // 🔥 Modern Reset Password Sheet
+    if (showResetSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showResetSheet = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+
+                Text(
+                    text = "Reset Password",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+
+                Text(
+                    text = "Enter your registered email and we’ll send you a reset link.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                OutlinedTextField(
+                    value = resetEmail,
+                    onValueChange = {
+                        onEmailChange(it)
+                        resetEmail = it
+                    },
+                    label = { Text("Email") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Button(
+                    onClick = {
+                        if (resetEmail.isNotBlank()) {
+                            onForgotPasswordClick() //resetEmail.trim() Refactor it clearly on which values should be shown
+                                                    // reset email or state.email
+                            showResetSheet = false
+                        } else {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Email cannot be empty")
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Send Reset Link")
+                }
+            }
         }
     }
 }
