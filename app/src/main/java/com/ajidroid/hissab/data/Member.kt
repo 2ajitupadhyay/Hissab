@@ -10,10 +10,27 @@ import androidx.room.Relation
 @Entity(tableName = "members")
 data class Member(
     @PrimaryKey(autoGenerate = true)
-    val id : Int = 0,
-    var toGive : Boolean = false,
-    val memberName : String,
-    var totalAmount : Int = 0,
+    val id: Int = 0,
+    var toGive: Boolean = false,
+    val memberName: String,
+    var totalAmount: Int = 0,
+
+    // NEW FIELDS 👇
+
+    /** Firebase UID if linked, null = local-only */
+    val linkedUserId: String? = null,
+
+    /** Member lifecycle state */
+    val status: MemberStatus = MemberStatus.LOCAL_ONLY,
+
+    /** Invite ID if sent but not yet accepted */
+    val inviteId: String? = null,
+
+    /** When connection became active */
+    val connectedAt: Long? = null,
+
+    /** Sync helper */
+    val lastSyncedAt: Long? = null
 )
 
 @Entity(
@@ -47,6 +64,13 @@ data class MemberWithTransactions(
     val transactions: List<Transactions>
 )
 
+
+enum class MemberStatus {
+    LOCAL_ONLY,   // Just a local person
+    INVITED,      // Invite sent
+    CONNECTED,    // Both users connected
+    BLOCKED       // Optional future
+}
 
 val membersList = mutableListOf(
     Member(0, toGive = true, memberName = "Ravi Kumar", totalAmount = 75),

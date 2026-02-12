@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -114,4 +115,10 @@ interface MemberDao {
         memberId: Int,
         newName: String
     )
+
+    @Query("SELECT * FROM members WHERE id = :memberId")
+    suspend fun getMemberById(memberId: Int): Member
+
+    @Update
+    suspend fun updateMember(member: Member)
 }

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "13258329237",
+    "project_id": "hissab-38a1e",
+    "storage_bucket": "hissab-38a1e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:13258329237:android:b971db26cd39c1ef5bdf9c",
+        "android_client_info": {
+          "package_name": "com.ajidroid.hissab"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "13258329237-2e98ec9g0rj3f9qrhfnbr0ig0qa3dq0s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ajidroid.hissab",
+            "certificate_hash": "92a730acce3df6c285043b7a46b032ebe3629572"
+          }
+        },
+        {
+          "client_id": "13258329237-uain84irisenop4ehljsmsp458g8bkqu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvCYAtbUeDPlZEQM8RDZfbT6LdBo3biuI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "13258329237-uain84irisenop4ehljsmsp458g8bkqu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

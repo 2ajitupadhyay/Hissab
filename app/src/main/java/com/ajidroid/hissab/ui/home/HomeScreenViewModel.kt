@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateSetOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ajidroid.hissab.data.Member
-import com.ajidroid.hissab.data.MemberRepository
+import com.ajidroid.hissab.data.MemberLocalDataSourceImpl
 import com.ajidroid.hissab.data.Transactions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
@@ -22,7 +22,7 @@ import kotlin.math.roundToInt
 
 @HiltViewModel
 class HomeScreenViewModel @Inject constructor(
-    private val repository: MemberRepository
+    private val repository: MemberLocalDataSourceImpl
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
@@ -33,6 +33,7 @@ class HomeScreenViewModel @Inject constructor(
         getAllMembers()
     }
 
+    // How do i make this method on IO thread so that it does not block the main thread and cause frame skipped
     private fun getAllMembers() {
         repository.getAllMembers()
             .onEach { members ->
