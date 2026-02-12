@@ -33,11 +33,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -46,7 +47,6 @@ import com.ajidroid.hissab.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import kotlinx.coroutines.launch
 
 
 @Composable
@@ -63,7 +63,9 @@ fun LoginRoute(
         onSignUpClick = viewModel::signUp,
         onGoogleSignIn = viewModel::signInWithGoogle,
         onContinueAsGuestClick = viewModel::continueAsGuest,
-        onForgotPasswordClick = viewModel::resetPassword
+        onForgotPasswordClick = viewModel::resetPassword,
+        clearError = viewModel::clearError,
+        clearMessage = viewModel::clearMessage
     )
 }
 
@@ -77,23 +79,35 @@ fun LoginScreen(
     onSignUpClick: () -> Unit,
     onGoogleSignIn: (String) -> Unit,
     onContinueAsGuestClick: () -> Unit,
-    onForgotPasswordClick: () -> Unit
+    onForgotPasswordClick: () -> Unit,
+    clearError: () -> Unit,
+    clearMessage: () -> Unit
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     val googleLauncher = rememberGoogleSignInLauncher(
         context = context,
         onTokenReceived = onGoogleSignIn
     )
 
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     var showResetSheet by remember { mutableStateOf(false) }
-    var resetEmail by remember { mutableStateOf(state.email) }
 
+    // 🔥 Handle error
+    LaunchedEffect(state.error) {
+        state.error?.let {
+            snackbarHostState.showSnackbar(it)
+            clearError()
+        }
+    }
+
+    // 🔥 Handle message
     LaunchedEffect(state.message) {
         state.message?.let {
             snackbarHostState.showSnackbar(it)
+            clearMessage()
         }
     }
 
@@ -122,7 +136,6 @@ fun LoginScreen(
                     value = state.email,
                     onValueChange = {
                         onEmailChange(it)
-                        resetEmail = it
                     },
                     label = { Text("Email") },
                     singleLine = true,
@@ -138,7 +151,7 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 🔥 Forgot Password Entry
+                // 🔥 Forgot password entry
                 Text(
                     text = "Forgot password?",
                     style = MaterialTheme.typography.bodyMedium,
@@ -149,7 +162,11 @@ fun LoginScreen(
                 )
 
                 Button(
-                    onClick = onLoginClick,
+                    onClick = {
+                        focusManager.clearFocus()   // remove focus
+                        keyboardController?.hide()  // hide keyboard
+                        onLoginClick()
+                    },
                     enabled = !state.isLoading,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -157,7 +174,11 @@ fun LoginScreen(
                 }
 
                 OutlinedButton(
-                    onClick = onSignUpClick,
+                    onClick = {
+                        focusManager.clearFocus()   // remove focus
+                        keyboardController?.hide()  // hide keyboard
+                        onSignUpClick()
+                    },
                     enabled = !state.isLoading,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -187,7 +208,7 @@ fun LoginScreen(
         }
     }
 
-    // 🔥 Modern Reset Password Sheet
+    // 🔥 Bottom Sheet
     if (showResetSheet) {
         ModalBottomSheet(
             onDismissRequest = { showResetSheet = false }
@@ -210,10 +231,9 @@ fun LoginScreen(
                 )
 
                 OutlinedTextField(
-                    value = resetEmail,
+                    value = state.email,
                     onValueChange = {
                         onEmailChange(it)
-                        resetEmail = it
                     },
                     label = { Text("Email") },
                     singleLine = true,
@@ -222,16 +242,10 @@ fun LoginScreen(
 
                 Button(
                     onClick = {
-                        if (resetEmail.isNotBlank()) {
-                            onForgotPasswordClick() //resetEmail.trim() Refactor it clearly on which values should be shown
-                                                    // reset email or state.email
-                            showResetSheet = false
-                        } else {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Email cannot be empty")
-                            }
-                        }
+                        onForgotPasswordClick()
+                        showResetSheet = false
                     },
+                    enabled = !state.isLoading,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Send Reset Link")

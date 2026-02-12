@@ -51,6 +51,14 @@ class LoginViewModel @Inject constructor(
         _state.update { it.copy(isLoading = false, message = message) }
     }
 
+    fun clearMessage() {
+        _state.update { it.copy(message = null) }
+    }
+
+    fun clearError() {
+        _state.update { it.copy(error = null) }
+    }
+
     fun login() {
         viewModelScope.launch {
             setLoading()
