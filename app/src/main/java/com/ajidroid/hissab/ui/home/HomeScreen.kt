@@ -74,12 +74,10 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ajidroid.hissab.R
-import com.ajidroid.hissab.data.Member
-import com.ajidroid.hissab.data.membersList
+import com.ajidroid.hissab.data.MemberDetailsWithTotal
 import com.ajidroid.hissab.ui.HissabTopAppBar
 import com.ajidroid.hissab.ui.member.EmptyState
 import com.ajidroid.hissab.ui.member.ErrorState
@@ -104,11 +102,11 @@ fun HomeScreen(
     var selectedMemberIdAddTransaction by remember { mutableStateOf<Int?>(null) }
 
     var showMoreActionSheet by remember { mutableStateOf(false) }
-    var selectedMemberMoreAction by remember { mutableStateOf<Member?>(null) }
+    var selectedMemberMoreAction by remember { mutableStateOf<MemberDetailsWithTotal?>(null) }
 
     var showSplitSheet by remember { mutableStateOf(false) }
     var splitStep by remember { mutableStateOf(SplitStep.SELECT_MEMBERS) }
-    val selectedIds = viewModel.selectedMemberIds
+    val selectedIds = viewModel.selectedMembers
     var selectedMemberIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
 
     // Make the split event wise success/failure toast
@@ -192,7 +190,7 @@ fun HomeScreen(
                 onDismiss = { showRenameMemberDialog = false } ,
                 textInitial = selectedMemberMoreAction!!.memberName,
                 onConfirm = { name ->
-                    viewModel.renameMemberName(name, selectedMemberMoreAction!!.id)
+                    viewModel.renameMember( memberId = selectedMemberMoreAction!!.memberId, newName = name )
                     showRenameMemberDialog = false
                 }
             )
@@ -226,7 +224,7 @@ fun HomeScreen(
                 when (action) {
                     MemberAction.Rename -> showRenameMemberDialog = true
                     MemberAction.ClearTab -> {}
-                    MemberAction.Delete -> viewModel.deleteMember(selectedMemberMoreAction!!)
+                    MemberAction.Delete -> viewModel.deleteMemberById(selectedMemberMoreAction!!.memberId)
                 }
             }
         } // For clear tab add a new transaction with reversing the total
@@ -238,7 +236,7 @@ fun HomeScreen(
                 members = uiState.members,
                 selectedMemberIds = selectedIds,
                 onToggleMember = viewModel::toggleMember,
-                onSelectAll = { viewModel.selectAll(uiState.members.map { it.id }) },
+                onSelectAll = { viewModel.selectAll(uiState.members.map { it.memberId }) },
                 onClearSelection = viewModel::clearSelection,
                 onCancel = {
                     when (splitStep) {
@@ -284,7 +282,7 @@ private fun HomeScreenContent(
     uiState: HomeUiState,
     onCardClick: (Int) -> Unit,
     onAddTransactionClick: (Int) -> Unit,
-    onMoreClick: (Member) -> Unit,
+    onMoreClick: (MemberDetailsWithTotal) -> Unit,
     modifier: Modifier = Modifier
 ) {
     when {
@@ -320,10 +318,10 @@ private fun HomeScreenContent(
 
 @Composable
 fun HomeBody(
-    memberList: List<Member>,
+    memberList: List<MemberDetailsWithTotal>,
     onCardClick: (Int) -> Unit,
     onAddTransactionClick: (Int) -> Unit,
-    onMoreClick: (Member) -> Unit,
+    onMoreClick: (MemberDetailsWithTotal) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
@@ -339,10 +337,10 @@ fun HomeBody(
 
 @Composable
 private fun MemberGrid(
-    members: List<Member>,
+    members: List<MemberDetailsWithTotal>,
     onCardClick: (Int) -> Unit,
     onAddTransactionClick: (Int) -> Unit,
-    onMoreClick: (Member) -> Unit,
+    onMoreClick: (MemberDetailsWithTotal) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
@@ -360,13 +358,13 @@ private fun MemberGrid(
     ) {
         items(
             items = members,
-            key = { it.id } // VERY important for recomposition + scroll stability
+            key = { it.memberId } // VERY important for recomposition + scroll stability
         ) { member ->
             MemberGridItem(
                 member = member,
-                onCardClick = { onCardClick(member.id) },
+                onCardClick = { onCardClick(member.memberId) },
                 onAddTransactionClick = {
-                    onAddTransactionClick(member.id)
+                    onAddTransactionClick(member.memberId)
                 },
                 onMoreClick = {
                     onMoreClick(member)
@@ -378,7 +376,7 @@ private fun MemberGrid(
 
 @Composable
 fun MemberGridItem(
-    member: Member,
+    member: MemberDetailsWithTotal,
     onCardClick: () -> Unit,
     onAddTransactionClick: () -> Unit,
     onMoreClick: () -> Unit,
@@ -415,14 +413,14 @@ fun MemberGridItem(
                 )
 
                 Text(
-                    text = member.totalAmount.asCurrency(),
+                    text = member.confirmedTotal.asCurrency(),
                     style = MaterialTheme.typography.headlineSmall
                 )
 
                 Text(
-                    text = if (member.totalAmount >= 0) stringResource(R.string.to_take) else stringResource(R.string.to_give),
+                    text = if (member.confirmedTotal >= 0) stringResource(R.string.to_take) else stringResource(R.string.to_give),
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (member.totalAmount < 0)
+                    color = if (member.confirmedTotal < 0)
                         MaterialTheme.colorScheme.error
                     else
                         MaterialTheme.colorScheme.primary
@@ -742,7 +740,7 @@ private fun MemberActionSheet(
 @Composable
 fun SplitWiseBottomSheet(
     step: SplitStep,
-    members: List<Member>,
+    members: List<MemberDetailsWithTotal>,
     selectedMemberIds: Set<Int>,
     onToggleMember: (Int) -> Unit,
     onSelectAll: () -> Unit,
@@ -780,7 +778,7 @@ fun SplitWiseBottomSheet(
 
 @Composable
 private fun SplitMemberSelectionContent(
-    members: List<Member>,
+    members: List<MemberDetailsWithTotal>,
     selectedMemberIds: Set<Int>,
     onToggleMember: (Int) -> Unit,
     onSelectAll: () -> Unit,
@@ -833,18 +831,18 @@ private fun SplitMemberSelectionContent(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(members, key = { it.id }) { member ->
+                items(members, key = { it.memberId }) { member ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onToggleMember(member.id) }
+                            .clickable { onToggleMember(member.memberId) }
                             .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
-                            checked = selectedMemberIds.contains(member.id),
+                            checked = selectedMemberIds.contains(member.memberId),
                             onCheckedChange = {// FIXED -> This is slow can we make it faster for better UX
-                                onToggleMember(member.id)
+                                onToggleMember(member.memberId)
                             }
                         )
                         Text(member.memberName, Modifier.padding(start = 8.dp))
@@ -966,11 +964,11 @@ private fun ActionRow(
     }
 }
 
-@Composable
-@Preview
-fun PersonPreview(){
-    MemberGridItem(membersList[4], onCardClick = {}, onAddTransactionClick = {}, modifier = Modifier.width(160.dp), onMoreClick = {})
-}
+//@Composable
+//@Preview
+//fun PersonPreview(){
+//    MemberGridItem(membersList[4], onCardClick = {}, onAddTransactionClick = {}, modifier = Modifier.width(160.dp), onMoreClick = {})
+//}
 //
 //@Composable
 //@Preview

@@ -4,12 +4,10 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
-import androidx.room.Transaction
 import androidx.room.Update
-import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface MemberDao {
+interface MemberDaoQ {
 
     @Insert
     suspend fun insertMember(member: Member)// : Long returned id from the database
@@ -38,22 +36,22 @@ interface MemberDao {
         toGive: Boolean
     )
 
-    @Transaction
-    suspend fun splitWiseTransactions(
-        transactions: List<Transactions>
-    ) {
-        // 1️⃣ Insert a transaction for EACH selected member
-        insertBulkTransactions(transactions)
-
-        // 2️⃣ Update balance for EACH selected member
-        transactions.forEach { transaction ->
-            updateMemberAmount(
-                memberId = transaction.memberId,
-                amount = transaction.amount,
-                toGive = transaction.toGive
-            )
-        }
-    }
+//    @Transaction
+//    suspend fun splitWiseTransactions(
+//        transactions: List<Transactions>
+//    ) {
+//        // 1️⃣ Insert a transaction for EACH selected member
+//        insertBulkTransactions(transactions)
+//
+//        // 2️⃣ Update balance for EACH selected member
+//        transactions.forEach { transaction ->
+//            updateMemberAmount(
+//                memberId = transaction.memberId,
+//                amount = transaction.amount,
+//                toGive = transaction.toGive
+//            )
+//        }
+//    }
 
     // Reduce member amount
     @Query("""
@@ -77,44 +75,44 @@ interface MemberDao {
         amount: Int
     )
 
-    @Transaction
-    suspend fun addTransactionAndUpdateMember(
-        transaction: Transactions
-    ) {
-        // 1️⃣ Insert transaction
-        insertTransaction(transaction)
+//    @Transaction
+//    suspend fun addTransactionAndUpdateMember(
+//        transaction: Transactions
+//    ) {
+//        // 1️⃣ Insert transaction
+//        insertTransaction(transaction)
+//
+//        // 2️⃣ Update member amount based on toGive
+//        if (transaction.toGive) {
+//            reduceMemberAmount(
+//                memberId = transaction.memberId,
+//                amount = transaction.amount
+//            )
+//        } else {
+//            increaseMemberAmount(
+//                memberId = transaction.memberId,
+//                amount = transaction.amount
+//            )
+//        }
+//    }
 
-        // 2️⃣ Update member amount based on toGive
-        if (transaction.toGive) {
-            reduceMemberAmount(
-                memberId = transaction.memberId,
-                amount = transaction.amount
-            )
-        } else {
-            increaseMemberAmount(
-                memberId = transaction.memberId,
-                amount = transaction.amount
-            )
-        }
-    }
+//    @Query("SELECT * FROM members")
+//    fun getAllMembers(): Flow<List<Member>> // Flow return type is already asynchronous so suspending it again would be wrong.
 
-    @Query("SELECT * FROM members")
-    fun getAllMembers(): Flow<List<Member>> // Flow return type is already asynchronous so suspending it again would be wrong.
-
-    @Transaction
-    @Query("SELECT * FROM members WHERE id = :memberId")
-    fun getMemberWithTransactions(
-        memberId: Int
-    ): Flow<MemberWithTransactions?>
+//    @Transaction
+//    @Query("SELECT * FROM members WHERE id = :memberId")
+//    fun getMemberWithTransactions(
+//        memberId: Int
+//    ): Flow<MemberWithTransactions?>
 
     @Delete
-    suspend fun deleteMember(member: Member)
+//    suspend fun deleteMember(member: Member)
 
-    @Query("UPDATE members SET memberName = :newName WHERE id = :memberId")
-    suspend fun renameMember(
-        memberId: Int,
-        newName: String
-    )
+//    @Query("UPDATE members SET memberName = :newName WHERE id = :memberId")
+//    suspend fun renameMember(
+//        memberId: Int,
+//        newName: String
+//    )
 
     @Query("SELECT * FROM members WHERE id = :memberId")
     suspend fun getMemberById(memberId: Int): Member

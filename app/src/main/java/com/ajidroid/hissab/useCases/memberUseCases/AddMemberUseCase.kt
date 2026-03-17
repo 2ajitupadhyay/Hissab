@@ -1,6 +1,6 @@
 package com.ajidroid.hissab.useCases.memberUseCases
 
-import com.ajidroid.hissab.data.MemberRepository
+import com.ajidroid.hissab.data.repository.MemberRepository
 import jakarta.inject.Inject
 
 class AddMemberUseCase @Inject constructor(

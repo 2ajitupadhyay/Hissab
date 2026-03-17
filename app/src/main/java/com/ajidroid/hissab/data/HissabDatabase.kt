@@ -1,12 +1,9 @@
 package com.ajidroid.hissab.data
 
-import androidx.room.Database
-import androidx.room.RoomDatabase
-
-@Database(entities = [Member::class, Transactions::class], version = 1, exportSchema = false)
-abstract class HissabDatabase : RoomDatabase() {
-
-    abstract fun memberDao() : MemberDao
+//@Database(entities = [Member::class, Transactions::class], version = 1, exportSchema = false)
+//abstract class HissabDatabase : RoomDatabase() {
+//
+//    abstract fun memberDao() : MemberDao
 
 //    companion object{
 //
@@ -23,4 +20,4 @@ abstract class HissabDatabase : RoomDatabase() {
 //            }
 //        }
 //    }
-}
+//}

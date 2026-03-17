@@ -15,8 +15,6 @@ data class Member(
     val memberName: String,
     var totalAmount: Int = 0,
 
-    // NEW FIELDS 👇
-
     /** Firebase UID if linked, null = local-only */
     val linkedUserId: String? = null,
 
@@ -43,16 +41,38 @@ data class Member(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("memberId")]
+    indices = [
+        Index("memberId"),
+        Index("memberId", "status"),
+        Index("memberId", "type"),
+        Index(value = ["memberId", "createdAt"]),
+        Index("senderUserId"),
+        Index("receiverUserId")
+    ]
 )
 data class Transactions(
-    @PrimaryKey(autoGenerate = true)
-    val transactionId: Int = 0,
-    val memberId: Int,  // Foreign key to Member
+
+    @PrimaryKey
+    val id: String, // 🔥 UUID (client generated)
+
+    val memberId: Int,
+
     val amount: Int,
-    val toGive: Boolean,
-    val description: String? = null,
-    val time: Long = System.currentTimeMillis()
+
+    val type: TransactionType, // BORROW / LEND
+
+    val description: String?,
+
+    val senderUserId: String? = null,
+    val receiverUserId: String? = null,
+
+    val status: TransactionStatus = TransactionStatus.LOCAL,
+
+    val syncStatus: SyncStatus = SyncStatus.SYNCED,
+
+    val createdAt: Long = System.currentTimeMillis(),
+
+    val updatedAt: Long = System.currentTimeMillis()
 )
 
 data class MemberWithTransactions(
@@ -64,12 +84,54 @@ data class MemberWithTransactions(
     val transactions: List<Transactions>
 )
 
+data class MemberDetailsWithTotal(
+    val memberId: Int,
+    val memberName: String,
+    val confirmedTotal: Int,
+    val pendingTotal: Int
+)
+
+@Entity(tableName = "outbox")
+data class OutboxEntity(
+
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+
+    val operationType: OutboxOperation,
+
+    val payload: String, // JSON
+
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+enum class TransactionType {
+    BORROW,
+    LEND
+}
+
+enum class TransactionStatus {
+    LOCAL,      // Only local member
+    PENDING,    // Waiting for other user
+    ACCEPTED,
+    DECLINED
+}
+
+enum class SyncStatus {
+    PENDING_SYNC,
+    SYNCED,
+    FAILED
+}
 
 enum class MemberStatus {
     LOCAL_ONLY,   // Just a local person
     INVITED,      // Invite sent
     CONNECTED,    // Both users connected
     BLOCKED       // Optional future
+}
+
+enum class OutboxOperation {
+    CREATE_TRANSACTION,
+    UPDATE_TRANSACTION
 }
 
 val membersList = mutableListOf(
@@ -79,34 +141,3 @@ val membersList = mutableListOf(
     Member(3, toGive = true, memberName = "Aijaz War", totalAmount = 234234),
     Member(4, toGive = false, memberName = "Aditya Raj", totalAmount = 534)
 )
-val transaction1 = Transactions(
-    amount = 94,
-    toGive = false,
-    description = "i have to take from Ravi",
-    memberId = 1
-)
-val transaction2 = Transactions(
-    amount = 7_000,
-    toGive = true,
-    description = "i have to give mess bill",
-    memberId = 1
-)
-val transaction3 = Transactions(
-    amount = 345,
-    toGive = true,
-    description = "this is demo text for testing",
-    memberId = 1
-)
-val transaction4 = Transactions(
-    amount = 456,
-    toGive = false,
-    description = "i don't know what to write anymore",
-    memberId = 1
-)
-val transactionList = mutableListOf(
-    transaction1,
-    transaction3,
-    transaction2,
-    transaction4
-)
-val member1 = Member(5,true,"Shankar Thakur", 432)

@@ -2,8 +2,11 @@ package com.ajidroid.hissab.di
 
 import android.content.Context
 import androidx.room.Room
-import com.ajidroid.hissab.data.HissabDatabase
-import com.ajidroid.hissab.data.MemberDao
+import androidx.room.RoomDatabase
+import com.ajidroid.hissab.data.local.HissabDatabase
+import com.ajidroid.hissab.data.local.dao.MemberDao
+import com.ajidroid.hissab.data.local.dao.OutboxDao
+import com.ajidroid.hissab.data.local.dao.TransactionsDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,13 +26,27 @@ object DatabaseModule {
         return Room.databaseBuilder(
             context,
             HissabDatabase::class.java,
-            "member_database"
-        ).build()
+            "hissab_database"
+        )
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .fallbackToDestructiveMigration() // for now while developing
+            .build()
     }
 
+//    @Provides
+//    @Singleton
+//    fun provideMemberDao( // Why we need module for dao but not for the repository, how dao is different
+//        db: HissabDatabase
+//    ): MemberDao = db.memberDao()
     @Provides
-    @Singleton
-    fun provideMemberDao( // Why we need module for dao but not for the repository, how dao is different
-        db: HissabDatabase
-    ): MemberDao = db.memberDao()
+    fun provideMemberDao(db: HissabDatabase): MemberDao =
+        db.memberDao()
+
+    @Provides
+    fun provideTransactionsDao(db: HissabDatabase): TransactionsDao =
+        db.transactionsDao()
+
+    @Provides
+    fun provideOutboxDao(db: HissabDatabase): OutboxDao =
+        db.outboxDao()
 }

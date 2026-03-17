@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ajidroid.hissab.R
+import com.ajidroid.hissab.data.TransactionType
 import com.ajidroid.hissab.data.Transactions
 import com.ajidroid.hissab.ui.HissabTopAppBar
 import java.text.SimpleDateFormat
@@ -174,7 +175,7 @@ private fun TransactionList(
     ) {
         items(
             items = transactions,
-            key = { it.transactionId }
+            key = { it.id }// Is this correct if the id is of type string
         ) { transaction ->
             TransactionItem(transaction = transaction)
         }
@@ -186,7 +187,7 @@ private fun TransactionItem(
     transaction: Transactions,
     modifier: Modifier = Modifier
 ) {
-    val isGive = transaction.toGive
+    val isGive = transaction.type == TransactionType.LEND
 
     val amountText = if (isGive) {
         "-₹${transaction.amount}"
@@ -226,7 +227,7 @@ private fun TransactionItem(
                 }
 
                 Text(
-                    text = formatTime(transaction.time),
+                    text = formatTime(transaction.createdAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
